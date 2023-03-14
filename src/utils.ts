@@ -9,6 +9,7 @@ const reg = /{.*}/g;
 var data = null;
 var type = "";
 var citeKey = "";
+var year = "";
 var fields: { [key: string]: string[] } = {};
 
 export const useAppVisible = () => {
@@ -47,8 +48,14 @@ const parseTemplate = (text) => {
   template = template.replaceAll("{citekey}", citeKey);
   template = template.replaceAll("{key}", citeKey);
   template = template.replaceAll("{type}", type);
+  template = template.replaceAll("{year}", year);
   console.log(template);
   try {
+    template = template.replaceAll(
+       /{author}/g,
+       //@ts-ignore-error
+       fields.author[0].split(",").reverse().join(" ").trim()
+    );
     template = template.replaceAll(
       /{author\s*lastname}/g,
       //@ts-ignore-error
@@ -60,29 +67,51 @@ const parseTemplate = (text) => {
       fields.author[0].split(",")[1]
     );
     template = template.replaceAll(
-      /{author\s*lastname}\+/g,
-      fields.author.forEach((value) => {
+      /{author\+}/g,
+      fields.author.map((name) => name.split(',').reverse().join(' ').trim()).join(', ')
+    );
+    template = template.replaceAll(
+      /{author\s*lastname\+}/g,
+      /*fields.author.forEach((value) => {
         return value.split(",")[0];
-      })
+      })*/
+      fields.author.map((name) => name.split(',')[0].trim()).join(', ')
     );
     template = template.replaceAll(
       /{author\s*firstname\+}/g,
-      fields.author.forEach((value) => {
+      /*fields.author.forEach((value) => {
         return value.split(",")[1];
-      })
+      })*/
+      fields.author.map((name) => name.split(',')[1].trim()).join(', ')
+    );
+    template = template.replaceAll(
+      /{author\+\+}/g,
+      fields.author.map((name) => "[["+name.split(',').reverse().join(' ').trim()+"]]").join(', ')
     );
   } catch (error) {
     // console.error(error);
   }
+  template = template.replaceAll("{pdf}", () => {
+    if (fields.file) {
+      let individualFile = fields.file[0].split(";")[0];
+      return logseq.settings.pdfTemplate.replaceAll(/{filelink}/gi, individualFile)
+          .replaceAll(/{citekey}/gi, citeKey)
+          .replaceAll(/{filename}/gi, individualFile.split("/").at(-1))
+          .replaceAll(/{itemKey}/gi, individualFile.split("/").at(-2));
+    }else{
+      return "";
+    }
+  });
   template = template.replaceAll("{file++}", () => {
     let text = "";
-    fields.file?.forEach((individualFile) => {
+    fields.file?.[0].split(";").forEach((individualFile) => {
       text =
-        text +
-        `${logseq.settings.fileTemplate
+        text + "\n" +
+        `${(individualFile.endsWith(".pdf") ? logseq.settings.pdfTemplate : logseq.settings.fileTemplate)
           .replaceAll(/{filelink}/gi, individualFile)
           .replaceAll(/{citekey}/gi, citeKey)
-          .replaceAll(/filename/gi, individualFile.split("/")[-1])}`;
+          .replaceAll(/{filename}/gi, individualFile.split("/").at(-1))
+          .replaceAll(/{itemKey}/gi, individualFile.split("/").at(-2))}`;
     });
     return text;
   });
@@ -90,14 +119,16 @@ const parseTemplate = (text) => {
     if (fields.hasOwnProperty(key)) {
       const element = fields[key];
       template = template.replaceAll(`{${key}}`, element[0]);
-      template = template.replaceAll(`{${key}+}`, element.toString());
-      template = template.replaceAll(`{${key}++}`, () => {
+      template = template.replaceAll(`{${key}+}`, element.join(", "));
+      template = template.replaceAll(`{${key}++}`, element.map((elemental) => `[[${elemental}]]`).join(", ")
+      /*() => {
         let text = "";
         element.forEach((elemental) => {
           text = text + `[[${elemental}]]`;
         });
         return text;
-      });
+      }*/
+      );
     }
   }
   template = template.replaceAll(/{[A-z]*\+*}/g, "");
@@ -202,6 +233,7 @@ export const actionRouter = (
   type = note.type;
   citeKey = note.key;
   fields = note.fields;
+  year = (fields.year && fields.year[0]) || (fields.date && fields.date[0].split('-')[0]) || "";
 
   if (actionKey == "inline" || actionKey == 0) {
     insertLiteratureNoteInline(uuid, oc);
@@ -266,6 +298,7 @@ function triggerParse(block: BlockEntity) {
       let newRegexString = toBeParsed.replace(currentMatch, formattedMatch);
       block.content = newRegexString;
       block.properties = {};
+      //logseq.Editor.updateBlock(block.uuid,newRegexString);
     }
   }
   if (block.children) {

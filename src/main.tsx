@@ -139,13 +139,23 @@ const settings: SettingSchemaDesc[] = [
     type: "boolean",
   },
   {
-    key: "fileTemplate",
-    title: "Template for File URLS",
+    key: "pdfTemplate",
+    title: "Template for pdf URLS",
     description:
-      "If a bibtex entry has a file associated with it, when you call {file++}, this template will be applied to each individual link. Use {fileLink} to refer to the link. You can use {title} and {key} as well. ",
-    default: "![{title}](file://{fileLink})",
+      "If a bibtex entry has a pdf file associated with it, when you call {file++}, this template will be applied to each individual pdf link. Use {fileLink} to refer to the local file link. You can use {title}, {itemKey} and {filename} as well. ",
+    default: "[Zotero PDF](zotero://open-pdf/library/items/{itemKey}) {{zotero-imported-file {itemKey}, \"{filename}\"}}",
     type: "string",
+    inputAs: 'textarea',
   },
+  {
+    key: "fileTemplate",
+    title: "Template for other file URLS",
+    description:
+      "If a bibtex entry has a file associated with it, when you call {file++}, this template will be applied to each individual file link. Use {fileLink} to refer to the local link. You can use {title} and {itemKey} as well. ",
+    default: "[Zotero Snapshot](zotero://select/library/items/{itemKey}) {{zotero-imported-file {itemKey}, \"{filename}\"}}",
+    type: "string",
+    inputAs: 'textarea',
+  }, 
   {
     key: "resultsCount",
     title: "Number of results to be returned",
